@@ -1,3 +1,5 @@
+// src/components/layout/Sidebar.tsx
+
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, MessageSquare, Trophy, LogOut, User, Settings, MoreHorizontal } from 'lucide-react';
@@ -5,7 +7,7 @@ import { useAuthStore } from '../../stores/authStore';
 
 const Sidebar = () => {
   const location = useLocation();
-  const navigate = useNavigate('/');
+  const navigate = useNavigate(); // useNavigate('/') navigate() olarak değiştirildi.
   const { user, signOut, isAdmin } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -18,6 +20,12 @@ const Sidebar = () => {
         setShowUserMenu(false);
       }
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        // More menüsü dışına tıklanınca, eğer admin sayfasında değilsek hover'ı kaldır
+        if (location.pathname !== '/admin') {
+          // Bu satır doğrudan hover'ı kaldırmaz ama menüyü kapatır,
+          // hover'ı yönetmek için CSS'e veya state'e ihtiyacımız var.
+          // Ancak, daha basit bir çözüm menüyü kapatmaktır.
+        }
         setShowMoreMenu(false);
       }
     };
@@ -26,25 +34,29 @@ const Sidebar = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [location.pathname]); // location.pathname bağımlılıklara eklendi
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleAdminClick = () => {
     if (isAdmin) {
       navigate('/admin');
-      setShowMoreMenu(false);
+      setShowMoreMenu(false); // Admin paneline gidince menüyü kapat
     }
   };
 
   const handleSignOutClick = () => {
     setShowUserMenu(false);
     signOut();
-    navigate('/');
+    navigate('/'); // Çıkış yapınca ana sayfaya yönlendir
   };
+
+  // Admin Panel butonunun aktif ve hover durumunu yönetmek için yeni bir değişken
+  const isAdminButtonActive = isActive('/admin');
 
   return (
     <div className="relative flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      {/* ... (Logo ve diğer menü elemanları aynı kalacak) ... */}
       <div className="gap-2 ml-3 mt-4 flex flex-row items-center p-2">
         <div className="flex items-baseline gap-1">
           <span className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 montserrat-black text-2xl font-bold text-white select-none">
@@ -124,7 +136,6 @@ const Sidebar = () => {
           </button>
 
           {showMoreMenu && (
-            // Modified dropdown classes: Added top-1/2 and -translate-y-1/2, removed top-0
             <div className="absolute left-full top-1/2 -translate-y-1/2 z-50 ml-2 w-max space-y-1 rounded-xl bg-popover p-2 shadow-lg border border-gray-800 transform">
               <button
                 onClick={handleAdminClick}
@@ -132,13 +143,12 @@ const Sidebar = () => {
                   flex w-full items-center gap-2 rounded-md p-3 text-sm font-medium
                   transition-all duration-200
                   text-white
-                  hover:bg-sidebar-accent hover:shadow-none
-                  ${isActive('/admin') ? 'bg-sidebar-accent text-foreground' : ''}
+                  ${isAdminButtonActive && !showMoreMenu ? 'bg-sidebar-accent text-foreground' : 'hover:bg-sidebar-accent hover:shadow-none'}
                   ${!isAdmin ? 'cursor-not-allowed opacity-50' : ''}
                 `}
                 disabled={!isAdmin}
               >
-                <Settings className={`h-4 w-4 ${isActive('/admin') ? 'text-foreground' : 'text-white'}`} />
+                <Settings className={`h-4 w-4 ${isAdminButtonActive ? 'text-foreground' : 'text-white'}`} />
                 Admin Panel
               </button>
             </div>
@@ -146,6 +156,7 @@ const Sidebar = () => {
         </div>
       </nav>
 
+      {/* ... (Kullanıcı menüsü aynı kalacak) ... */}
       <div className="mt-auto p-4">
         <div className="relative" ref={userMenuRef}>
           <button
