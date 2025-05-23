@@ -4,6 +4,7 @@ import { Send, CheckCircle, Trash2, Edit2, X, Check, Reply } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore';
 import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { tr } from 'date-fns/locale'; // türkçe yerelleştirme için
 
 interface GlobalChatProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
     if (isAdmin && message.startsWith('/')) {
       const command = message.toLowerCase();
       if (command === '/clear') {
-        const confirmed = window.confirm('Are you sure you want to clear all messages?');
+        const confirmed = window.confirm('tüm mesajları silmek istediğinizden emin misiniz?');
         if (confirmed) {
           await deleteMessage(null);
           setMessage('');
@@ -83,7 +84,7 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
 
   const handleSaveEdit = async (messageId: string) => {
     if (!editContent.trim()) {
-      const confirmed = window.confirm('Empty message will be deleted. Continue?');
+      const confirmed = window.confirm('boş mesaj silinecek. devam edilsin mi?');
       if (confirmed) {
         await handleConfirmDelete(messageId);
         return;
@@ -125,7 +126,7 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-center text-sm text-gray-500">No messages yet. Start the conversation!</p>
+            <p className="text-center text-sm text-gray-500">henüz mesaj yok. sohbeti başlatın!</p>
           </div>
         ) : (
           <div className="space-y-4 p-4">
@@ -138,7 +139,7 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
                   <div className="relative">
                     <img
                       src={msg.sender?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.sender_id}`}
-                      alt="Avatar"
+                      alt="avatar"
                       className="h-8 w-8 rounded-full"
                     />
                     {msg.sender?.is_online && (
@@ -149,22 +150,22 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center flex-wrap gap-2">
                     <Link to={`/profile/${msg.sender?.username}`} className="font-medium hover:text-blue-400 truncate">
-                      {msg.sender?.username || 'Unknown User'}
+                      {msg.sender?.username || 'bilinmeyen kullanıcı'}
                     </Link>
                     {msg.sender?.verified && (
                       <CheckCircle className="h-4 w-4 text-blue-500 shrink-0" />
                     )}
                     {msg.sender?.is_admin && (
                       <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white shrink-0">
-                        Admin
+                        admin
                       </span>
                     )}
                     <span className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: tr })}
                     </span>
                     {msg.edited && (
                       <span className="text-xs text-gray-500 italic">
-                        (edited)
+                        (düzenlendi)
                       </span>
                     )}
                     {(user?.id === msg.sender_id || isAdmin) && (
@@ -175,14 +176,14 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
                               <button
                                 onClick={() => handleSaveEdit(msg.id)}
                                 className="rounded-full p-1 text-green-400 hover:bg-gray-700 group/button"
-                                title="Save"
+                                title="kaydet"
                               >
                                 <Check className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={handleCancelEdit}
                                 className="rounded-full p-1 text-red-400 hover:bg-gray-700 group/button"
-                                title="Cancel"
+                                title="iptal"
                               >
                                 <X className="h-4 w-4" />
                               </button>
@@ -192,18 +193,21 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
                               <button
                                 onClick={() => handleReply(msg.id, msg.content)}
                                 className="rounded-full p-1 text-gray-400 hover:bg-gray-700 hover:text-white group/button"
+                                title="yanıtla"
                               >
                                 <Reply className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleStartEdit(msg.id, msg.content)}
                                 className="rounded-full p-1 text-gray-400 hover:bg-gray-700 hover:text-white group/button"
+                                title="düzenle"
                               >
                                 <Edit2 className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(msg.id)}
                                 className="rounded-full p-1 text-gray-400 hover:bg-gray-700 hover:text-white group/button"
+                                title="sil"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -243,7 +247,7 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
         {replyingTo && (
           <div className="mb-2 flex items-center justify-between rounded bg-gray-800 p-2">
             <div className="text-sm text-gray-400 truncate">
-              Replying to: {replyingTo.content}
+              yanıtlanıyor: {replyingTo.content}
             </div>
             <button
               onClick={() => setReplyingTo(null)}
@@ -259,12 +263,13 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="flex-1 bg-transparent px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none"
-            placeholder={isAdmin ? "Type a message or use /clear..." : "Type a message..."}
+            placeholder={isAdmin ? "bir mesaj yazın veya /clear kullanın..." : "bir mesaj yazın..."}
           />
           <button
             type="submit"
             className="ml-1 rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-500 disabled:opacity-50 shrink-0"
             disabled={!message.trim()}
+            aria-label="gönder"
           >
             <Send className="h-4 w-4" />
           </button>
@@ -274,19 +279,19 @@ const GlobalChat = ({ isOpen }: GlobalChatProps) => {
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-lg bg-gray-800 p-4 shadow-lg">
-            <p className="mb-4 text-center">Are you sure you want to delete this message?</p>
+            <p className="mb-4 text-center">bu mesajı silmek istediğinizden emin misiniz?</p>
             <div className="flex justify-center gap-2">
               <button
                 onClick={() => handleConfirmDelete(showDeleteConfirm)}
                 className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
               >
-                Delete
+                sil
               </button>
               <button
                 onClick={handleCancelDelete}
                 className="rounded-md bg-gray-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-600"
               >
-                Cancel
+                iptal
               </button>
             </div>
           </div>

@@ -7,7 +7,7 @@ const LeaderboardPage = () => {
   const { leaderboard, fetchLeaderboard } = useVideoStore();
 
   useEffect(() => {
-    document.title = 'Leaderboard - VideoChat';
+    document.title = 'liderlik tablosu - videochat';
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
@@ -16,7 +16,7 @@ const LeaderboardPage = () => {
       <div className="rounded-2xl bg-gray-800/50 p-6 backdrop-blur-sm">
         <div className="mb-4 flex items-center">
           <Trophy className="mr-2 h-6 w-6 text-yellow-500" />
-          <h2 className="text-xl font-semibold">Least Watched Videos</h2>
+          <h2 className="text-xl font-semibold">en az izlenen videolar</h2>
         </div>
 
         <div className="space-y-4">
@@ -46,7 +46,7 @@ const LeaderboardPage = () => {
                   @{video.uploader_username}
                 </Link>
                 <p className="mt-1 text-sm text-gray-400">
-                  {video.total_watch_time}s total watch time
+                  {video.total_watch_time}s toplam izlenme süresi
                 </p>
               </div>
               <Video className="h-5 w-5 text-gray-400" />

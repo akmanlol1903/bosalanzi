@@ -4,6 +4,7 @@ import { Send, X, CheckCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '../../stores/authStore';
 import { Link } from 'react-router-dom';
+import { tr } from 'date-fns/locale'; // türkçe yerelleştirme için
 
 interface PrivateChatProps {
   userId: string;
@@ -62,7 +63,7 @@ export const PrivateChat = ({ userId, username, avatarUrl, isAdmin, isVerified, 
                 {isVerified && <CheckCircle className="ml-1 h-4 w-4 text-blue-500" />}
                 {isAdmin && (
                   <span className="ml-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-                    Admin
+                    admin
                   </span>
                 )}
               </div>
@@ -72,6 +73,7 @@ export const PrivateChat = ({ userId, username, avatarUrl, isAdmin, isVerified, 
         <button
           className="rounded-full p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
           onClick={onClose}
+          aria-label="kapat"
         >
           <X className="h-5 w-5" />
         </button>
@@ -80,7 +82,7 @@ export const PrivateChat = ({ userId, username, avatarUrl, isAdmin, isVerified, 
       <div className="flex-1 overflow-y-auto p-3">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-center text-sm text-gray-500">No messages yet. Start the conversation!</p>
+            <p className="text-center text-sm text-gray-500">henüz mesaj yok. sohbeti başlatın!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -95,7 +97,7 @@ export const PrivateChat = ({ userId, username, avatarUrl, isAdmin, isVerified, 
                   <Link to={`/profile/${msg.sender?.username}`}>
                     <img
                       src={msg.sender?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.sender_id}`}
-                      alt="Avatar"
+                      alt="avatar"
                       className="mr-2 h-8 w-8 rounded-full"
                     />
                   </Link>
@@ -109,7 +111,7 @@ export const PrivateChat = ({ userId, username, avatarUrl, isAdmin, isVerified, 
                 >
                   <p className="text-sm">{msg.content}</p>
                   <span className="mt-1 block text-right text-xs text-gray-300">
-                    {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: tr })}
                   </span>
                 </div>
               </div>
@@ -126,12 +128,13 @@ export const PrivateChat = ({ userId, username, avatarUrl, isAdmin, isVerified, 
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="flex-1 bg-transparent px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none"
-            placeholder="Type a message..."
+            placeholder="bir mesaj yazın..."
           />
           <button
             type="submit"
             className="ml-1 rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-500 disabled:opacity-50"
             disabled={!message.trim()}
+            aria-label="gönder"
           >
             <Send className="h-4 w-4" />
           </button>

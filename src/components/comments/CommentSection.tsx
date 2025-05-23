@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Send, Trash2, CheckCircle } from 'lucide-react';
 import { Database } from '../../lib/database.types';
 import { Link } from 'react-router-dom';
+import { tr } from 'date-fns/locale'; // türkçe yerelleştirme için
 
 type Comment = Database['public']['Views']['comment_details']['Row'];
 
@@ -28,20 +29,20 @@ const CommentSection = ({ videoId, comments, onAddComment, onDeleteComment }: Co
 
   return (
     <div className="mt-8 rounded-2xl bg-gray-800/50 p-6 backdrop-blur-sm">
-      <h2 className="text-xl font-semibold">Comments</h2>
+      <h2 className="text-xl font-semibold">yorumlar</h2>
 
       <form onSubmit={handleSubmit} className="mt-4">
         <div className="flex gap-4">
           <img
             src={user?.user_metadata.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id}`}
-            alt="Avatar"
+            alt="avatar"
             className="h-10 w-10 rounded-full"
           />
           <div className="flex-1">
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Add a comment..."
+              placeholder="bir yorum ekle..."
               className="w-full rounded-lg bg-gray-700 p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={2}
             />
@@ -52,7 +53,7 @@ const CommentSection = ({ videoId, comments, onAddComment, onDeleteComment }: Co
                 className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
-                Comment
+                yorum yap
               </button>
             </div>
           </div>
@@ -80,17 +81,18 @@ const CommentSection = ({ videoId, comments, onAddComment, onDeleteComment }: Co
                   )}
                   {comment.is_admin && (
                     <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-                      Admin
+                      admin
                     </span>
                   )}
                   <span className="text-sm text-gray-400">
-                    {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: tr })}
                   </span>
                 </div>
                 {user?.id === comment.user_id && (
                   <button
                     onClick={() => onDeleteComment(comment.id)}
                     className="rounded-full p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
+                    aria-label="sil"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

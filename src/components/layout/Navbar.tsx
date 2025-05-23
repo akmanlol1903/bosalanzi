@@ -8,7 +8,7 @@ export const Navbar = () => {
         <Link to="/" className="flex items-center gap-2">
           <MessageCircle className="h-8 w-8 text-blue-500" />
           <span className="bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-2xl font-bold text-transparent">
-            VideoChat
+            VideoChat 
           </span>
         </Link>
       </div>

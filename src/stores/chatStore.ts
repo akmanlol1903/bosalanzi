@@ -18,7 +18,6 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
   reply_to?: string;
   reply_to_content?: string;
   reply_to_username?: string;
-  // is_event_message is already part of Database['public']['Tables']['messages']['Row']
 };
 
 interface ChatState {
@@ -28,7 +27,7 @@ interface ChatState {
   sendGlobalMessage: (
     content: string,
     replyToId?: string | null,
-    options?: { isEventMessage?: boolean; eventTriggeringUserId?: string } // eventTriggeringUserId eklendi (opsiyonel)
+    options?: { isEventMessage?: boolean; eventTriggeringUserId?: string }
   ) => Promise<boolean>;
   sendPrivateMessage: (receiverId: string, content: string) => Promise<boolean>;
   fetchGlobalMessages: () => Promise<void>;
@@ -42,8 +41,8 @@ interface ChatState {
   clearUnreadEventNotifications: () => void;
 }
 
-const SYSTEM_SENDER_USERNAME = 'Boşalanzi Bildirimi';
-const SYSTEM_SENDER_AVATAR = '/vite.svg'; // Projenizde uygun bir sistem ikonu yolu
+const SYSTEM_SENDER_USERNAME = 'boşalanzi bildirimi'; // Çevrildi
+const SYSTEM_SENDER_AVATAR = '/vite.svg'; 
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
@@ -62,12 +61,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const authUser = (await supabase.auth.getUser()).data.user;
     
     if (!authUser) {
-      console.error('User not authenticated for sending message');
+      console.error('mesaj göndermek için kullanıcı kimliği doğrulanmadı');
       return false;
     }
 
     const messageData: Database['public']['Tables']['messages']['Insert'] = {
-      sender_id: authUser.id, // RLS için mesajı atan client'ın ID'si
+      sender_id: authUser.id, 
       content,
       created_at: new Date().toISOString(),
       is_event_message: options?.isEventMessage || false,
@@ -92,10 +91,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       .insert(messageData);
       
     if (error) {
-      console.error('Error sending message:', error);
+      console.error('mesaj gönderilirken hata:', error);
       return false;
     }
-    // Bildirim sayacı artırımı Realtime aboneliğinde yapılacak.
     return true;
   },
   
@@ -113,7 +111,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
       
     if (error) {
-      console.error('Error sending private message:', error);
+      console.error('özel mesaj gönderilirken hata:', error);
       return false;
     }
     return true;
@@ -134,7 +132,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       .order('created_at', { ascending: true });
       
     if (error) {
-      console.error('Error fetching messages:', error);
+      console.error('mesajlar alınırken hata:', error);
       set({ loading: false });
       return;
     }
@@ -142,14 +140,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (data) {
       const processedMessages = data.map(msg => {
         if (msg.is_event_message) {
-          // Olayı tetikleyen gerçek kullanıcı bilgisi content'te olabilir veya cum_events'ten alınabilir.
-          // Şimdilik sabit sistem göndericisi kullanalım.
-          // `VideoPlayer`da `cum_events` dinleyicisi mesaj içeriğini buna göre oluşturmalı.
           return {
             ...msg,
             sender: {
-              id: msg.sender_id, // Gerçekte mesajı atan client'ın user ID'si (RLS için)
-              username: SYSTEM_SENDER_USERNAME, // Ama gösterilecek isim bu olacak
+              id: msg.sender_id, 
+              username: SYSTEM_SENDER_USERNAME,
               avatar_url: SYSTEM_SENDER_AVATAR,
               is_admin: false,
               verified: true,
@@ -172,21 +167,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       .update({ content, edited: true, updated_at: new Date().toISOString() })
       .eq('id', messageId);
 
-    if (error) console.error('Error editing message:', error);
+    if (error) console.error('mesaj düzenlenirken hata:', error);
   },
 
   deleteMessage: async (messageId: string | null) => {
     const query = supabase.from('messages');
     if (messageId === null) {
-      await query.delete().is('receiver_id', null).eq('is_event_message', false); // Sadece kullanıcı mesajlarını temizle
-      await query.delete().is('receiver_id', null).eq('is_event_message', true); // Sonra event mesajlarını
+      await query.delete().is('receiver_id', null).eq('is_event_message', false);
+      await query.delete().is('receiver_id', null).eq('is_event_message', true); 
     } else {
       await query.delete().eq('id', messageId);
     }
   },
   
   subscribeToMessages: () => {
-    const messagesSubscriptionKey = 'messages-global-subscription-v2'; // Kanal adını benzersiz yap
+    const messagesSubscriptionKey = 'messages-global-subscription-v2';
     const messageChannel = supabase.channel(messagesSubscriptionKey);
     
     messageChannel
@@ -196,23 +191,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          // filter: 'receiver_id=is.null' // Filtreyi client tarafında yapalım
         }, 
         async (payload) => {
           const newMessage = payload.new;
 
-          if (newMessage.receiver_id === null) { // Sadece global mesajları işle
-            console.log('New global message via Realtime:', newMessage);
+          if (newMessage.receiver_id === null) { 
+            console.log('realtime aracılığıyla yeni genel mesaj:', newMessage);
 
             let processedMessage: Message;
 
             if (newMessage.is_event_message) {
-              // Event mesajı ise, `sender` objesini sistem olarak ayarla.
-              // Content'in içinde orijinal kullanıcı adı zaten var (`VideoPlayer` tarafından eklendi).
               processedMessage = {
                 ...newMessage,
                 sender: {
-                  id: newMessage.sender_id, // Gerçekte bu mesajı atan client'ın ID'si
+                  id: newMessage.sender_id,
                   username: SYSTEM_SENDER_USERNAME,
                   avatar_url: SYSTEM_SENDER_AVATAR,
                   is_admin: false,
@@ -223,7 +215,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               };
               get().incrementUnreadEventNotifications();
             } else if (newMessage.sender_id) {
-              // Normal kullanıcı mesajı, gönderici bilgilerini çek
               const { data: userSenderData, error: userError } = await supabase
                 .from('users')
                 .select('id, username, avatar_url, is_admin, verified, is_online, last_seen')
@@ -235,7 +226,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 sender: userError ? undefined : userSenderData
               };
             } else {
-              // sender_id null ve event mesajı değilse (beklenmedik durum)
               processedMessage = { ...newMessage, sender: undefined };
             }
             
@@ -244,14 +234,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       )
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') console.log(`Successfully subscribed to ${messagesSubscriptionKey}`);
-         else if (err) console.error(`Error in ${messagesSubscriptionKey} subscription:`, err);
-         else console.log(`Subscription status for ${messagesSubscriptionKey}: ${status}`);
+         if (status === 'SUBSCRIBED') console.log(`${messagesSubscriptionKey} kanalına başarıyla abone olundu`);
+         else if (err) console.error(`${messagesSubscriptionKey} aboneliğinde hata:`, err);
+         else console.log(`${messagesSubscriptionKey} için abonelik durumu: ${status}`);
       });
       
     return () => {
-      console.log(`Unsubscribing from ${messagesSubscriptionKey}`);
-      supabase.removeChannel(messageChannel).catch(error => console.error(`Error unsubscribing from ${messagesSubscriptionKey}:`, error));
+      console.log(`${messagesSubscriptionKey} aboneliğinden çıkılıyor`);
+      supabase.removeChannel(messageChannel).catch(error => console.error(`${messagesSubscriptionKey} aboneliğinden çıkılırken hata:`, error));
     };
   }
 }));

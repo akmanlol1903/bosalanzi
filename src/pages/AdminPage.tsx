@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Database } from '../lib/database.types';
 import AdminVideoCard from '../components/video/AdminVideoCard';
 
-type Video = Database['public']['Tables']['videos']['Row'];
+type VideoRow = Database['public']['Tables']['videos']['Row']; // Type adı Video ile çakışmaması için VideoRow olarak değiştirildi
 
 interface User {
   id: string;
@@ -30,7 +30,7 @@ const AdminPage = () => {
   const [activeTab, setActiveTab] = useState<'videos' | 'users' | 'votes'>('videos');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<VideoRow | null>(null); // VideoRow kullanıldı
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [voteCounts, setVoteCounts] = useState<VoteCount[]>([]);
@@ -62,7 +62,7 @@ const AdminPage = () => {
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error('Error fetching users:', error);
+      console.error('kullanıcılar alınırken hata:', error);
     } else {
       setUsers(data || []);
     }
@@ -79,7 +79,7 @@ const AdminPage = () => {
       .group('video_id');
       
     if (error) {
-      console.error('Error fetching vote counts:', error);
+      console.error('oy sayıları alınırken hata:', error);
     } else {
       setVoteCounts(data.map(item => ({
         video_id: item.video_id,
@@ -104,18 +104,18 @@ const AdminPage = () => {
       await deleteVideo(videoId);
       await fetchVideos();
     } catch (error) {
-      console.error('Error deleting video:', error);
+      console.error('video silinirken hata:', error);
     }
   };
 
-  const handleEditVideo = (video: Video) => {
+  const handleEditVideo = (video: VideoRow) => { // VideoRow kullanıldı
     setSelectedVideo(video);
     setShowEditForm(true);
   };
 
   const getVideoTitle = (videoId: string) => {
     const video = videos.find(v => v.id === videoId);
-    return video ? video.title : 'Unknown Video';
+    return video ? video.title : 'bilinmeyen video';
   };
 
   if (!isAdmin) {
@@ -125,13 +125,13 @@ const AdminPage = () => {
   return (
     <div className="container mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold">admin paneli</h1>
         <button
           className="flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
           onClick={() => setShowUploadForm(true)}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Upload Video
+          video yükle
         </button>
       </div>
 
@@ -144,7 +144,7 @@ const AdminPage = () => {
             onClick={() => setActiveTab('videos')}
           >
             <Video className="mr-2 h-4 w-4" />
-            Videos
+            videolar
           </button>
           <button
             className={`flex items-center rounded-md px-4 py-2 text-sm font-medium ${
@@ -153,7 +153,7 @@ const AdminPage = () => {
             onClick={() => setActiveTab('users')}
           >
             <UserCheck className="mr-2 h-4 w-4" />
-            Users
+            kullanıcılar
           </button>
           <button
             className={`flex items-center rounded-md px-4 py-2 text-sm font-medium ${
@@ -162,12 +162,11 @@ const AdminPage = () => {
             onClick={() => setActiveTab('votes')}
           >
             <ThumbsUp className="mr-2 h-4 w-4" />
-            Votes
+            oylar
           </button>
         </div>
       </div>
 
-      {/* Videos Tab Content */}
       {activeTab === 'videos' && (
         <>
           {loading ? (
@@ -176,9 +175,9 @@ const AdminPage = () => {
             </div>
           ) : videos.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg bg-gray-800 py-20 text-center">
-              <h2 className="mb-2 text-xl">No videos yet</h2>
+              <h2 className="mb-2 text-xl">henüz video yok</h2>
               <p className="text-gray-400">
-                Start by uploading your first video using the 'Upload Video' button.
+                'video yükle' butonunu kullanarak ilk videonuzu yükleyerek başlayın.
               </p>
             </div>
           ) : (
@@ -196,7 +195,6 @@ const AdminPage = () => {
         </>
       )}
 
-      {/* Users Tab Content */}
       {activeTab === 'users' && (
         <>
           {loadingUsers ? (
@@ -205,7 +203,7 @@ const AdminPage = () => {
             </div>
           ) : users.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg bg-gray-800 py-20 text-center">
-              <h2 className="mb-2 text-xl">No users yet</h2>
+              <h2 className="mb-2 text-xl">henüz kullanıcı yok</h2>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-lg">
@@ -213,16 +211,16 @@ const AdminPage = () => {
                 <thead className="bg-gray-800">
                   <tr>
                     <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                      User
+                      kullanıcı
                     </th>
                     <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                      Joined
+                      katılım tarihi
                     </th>
                     <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                      Status
+                      durum
                     </th>
                     <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                      Actions
+                      işlemler
                     </th>
                   </tr>
                 </thead>
@@ -253,7 +251,7 @@ const AdminPage = () => {
                               : 'bg-gray-100 text-gray-800'
                           }`}
                         >
-                          {user.is_admin ? 'Admin' : 'User'}
+                          {user.is_admin ? 'admin' : 'kullanıcı'}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
@@ -261,7 +259,7 @@ const AdminPage = () => {
                           className="text-blue-500 hover:text-blue-400"
                           onClick={() => toggleAdminStatus(user.id, user.is_admin)}
                         >
-                          {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                          {user.is_admin ? 'adminliği kaldır' : 'admin yap'}
                         </button>
                       </td>
                     </tr>
@@ -273,7 +271,6 @@ const AdminPage = () => {
         </>
       )}
 
-      {/* Votes Tab Content */}
       {activeTab === 'votes' && (
         <>
           {loadingVotes ? (
@@ -282,9 +279,9 @@ const AdminPage = () => {
             </div>
           ) : voteCounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg bg-gray-800 py-20 text-center">
-              <h2 className="mb-2 text-xl">No votes yet</h2>
+              <h2 className="mb-2 text-xl">henüz oy yok</h2>
               <p className="text-gray-400">
-                Users haven't voted on any videos yet.
+                kullanıcılar henüz hiçbir videoya oy vermedi.
               </p>
             </div>
           ) : (
@@ -293,10 +290,10 @@ const AdminPage = () => {
                 <thead className="bg-gray-800">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                      Video
+                      video
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                      Votes
+                      oylar
                     </th>
                   </tr>
                 </thead>

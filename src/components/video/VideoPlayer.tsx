@@ -6,7 +6,8 @@ import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, Minimiz
 import { supabase } from '../../lib/supabase';
 import { formatDuration, cn } from '../../lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Database } from '../../lib/database.types'; // Database importu
+import { Slider } from '@/components/ui/slider';
+import { Database } from '../../lib/database.types';
 
 interface VideoPlayerProps {
   videoId: string;
@@ -23,7 +24,6 @@ interface CumMarker {
   timestamp: number;
 }
 
-// Yeni CumEventData arayüzü
 interface CumEventData {
   id: string;
   video_id: string;
@@ -38,7 +38,6 @@ interface CumEventData {
 const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const progressContainerRef = useRef<HTMLDivElement>(null);
   const { updateWatchTime } = useVideoStore();
   const { user } = useAuthStore();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -59,8 +58,6 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
   const [activeMarkerTimestampForTooltip, setActiveMarkerTimestampForTooltip] = useState<number | null>(null);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const volumeControlTimeoutRef = useRef<number | null>(null);
-
-  // Aktif "cum" olayını saklamak için state
   const [activeCumEvent, setActiveCumEvent] = useState<CumEventData | null>(null);
 
 
@@ -79,10 +76,9 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
       })
       .subscribe();
 
-    // Yeni cum_events tablosuna abonelik
     const cumEventsChannel = supabase
       .channel(`realtime-cum-events-${videoId}`)
-      .on<Database['public']['Tables']['cum_events']['Row']>( // Tipi belirtiyoruz
+      .on<Database['public']['Tables']['cum_events']['Row']>(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -93,7 +89,7 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
         (payload) => {
           const newEvent = payload.new;
           if (newEvent) {
-            setActiveCumEvent(newEvent as CumEventData); // Tip dönüşümü
+            setActiveCumEvent(newEvent as CumEventData);
             createEmojis();
             setShowCumAnimation(true);
 
@@ -109,7 +105,7 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
 
     return () => {
       supabase.removeChannel(markerChannel);
-      supabase.removeChannel(cumEventsChannel); // Abonelikten çıkış
+      supabase.removeChannel(cumEventsChannel);
     };
   }, [videoId]);
 
@@ -134,6 +130,12 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
           setIsMuted(prev => {
             const newMuted = !prev;
             if (videoRef.current) videoRef.current.muted = newMuted;
+            if (newMuted && videoRef.current) videoRef.current.volume = 0;
+            if (!newMuted && videoRef.current && volume === 0) { 
+                const newVolume = 0.5; 
+                setVolume(newVolume);
+                if(videoRef.current) videoRef.current.volume = newVolume;
+            }
             return newMuted;
           });
           break;
@@ -227,8 +229,8 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
     if (!video) return;
   
     const handleTimeUpdate = () => {
-      if (!isDraggingTimeline) {
-        setCurrentTime(video.currentTime);
+      if (!isDraggingTimeline) { 
+          setCurrentTime(video.currentTime);
       }
   
       if (isPlaying && duration > 0) {
@@ -270,7 +272,7 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
       video.removeEventListener('play', handlePlayEvent);
       video.removeEventListener('pause', handlePauseEvent);
     };
-  }, [isDraggingTimeline, isPlaying, groupedMarkers, duration, activeMarkerTimestampForTooltip]);
+  }, [isDraggingTimeline, isPlaying, groupedMarkers, duration, activeMarkerTimestampForTooltip]); 
   
 
   useEffect(() => {
@@ -338,7 +340,7 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
       clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = window.setTimeout(() => {
-      if (isPlaying) {
+      if (isPlaying && !showVolumeSlider) {
         setShowControls(false);
       }
     }, 3000);
@@ -376,7 +378,6 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
     const currentUserUsername = user.user_metadata.username || 'Anonymous';
     const currentUserAvatarUrl = user.user_metadata.avatar_url || null;
   
-    // Insert into the cum_events table
     const { error: cumEventError } = await supabase.from('cum_events').insert({
       video_id: videoId,
       user_id: user.id,
@@ -390,21 +391,19 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
       return;
     }
   
-    // Insert into the cum_markers table (for individual timeline markers)
     await supabase.from('cum_markers').insert({
       video_id: videoId,
       user_id: user.id,
       timestamp: currentVideoTime
     });
 
-    // Post message to global chat
     await supabase.from('messages').insert({
       sender_id: user.id,
       content: `💦 ${currentUserUsername} just came at ${formatDuration(currentVideoTime)}! 💦`,
       created_at: new Date().toISOString(),
+      is_event_message: true, 
     });
   
-    // Update user's local cum_count and total_cum_duration
     const timerDuration = cumStartTimeRef.current
       ? Math.floor((Date.now() - cumStartTimeRef.current) / 1000)
       : 0;
@@ -444,44 +443,28 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
     }
   };
   
-  const timelineDragMouseMove = (e: MouseEvent) => {
-    if (!isDraggingTimeline || !progressContainerRef.current || !videoRef.current || !duration) return;
-    const rect = progressContainerRef.current.getBoundingClientRect();
-    let pos = (e.clientX - rect.left) / rect.width;
-    pos = Math.max(0, Math.min(1, pos));
-    videoRef.current.currentTime = pos * duration;
-    setCurrentTime(pos * duration);
+  const handleTimelineChange = (value: number[]) => {
+      if (!videoRef.current || !duration) return;
+      const newTime = value[0];
+      videoRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
   };
-  
-  useEffect(() => {
-    const timelineDragMouseUp = () => {
-      if (isDraggingTimeline) {
-        setIsDraggingTimeline(false);
-      }
-    };
-  
-    if (isDraggingTimeline) {
-      document.addEventListener('mousemove', timelineDragMouseMove);
-      document.addEventListener('mouseup', timelineDragMouseUp);
-    }
-  
-    return () => {
-      document.removeEventListener('mousemove', timelineDragMouseMove);
-      document.removeEventListener('mouseup', timelineDragMouseUp);
-    };
-  }, [isDraggingTimeline, duration]); 
-  
 
-  const handleTimelineMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressContainerRef.current || !videoRef.current || !duration) return;
-    e.preventDefault();
+  const handleTimelinePointerDown = () => {
     setIsDraggingTimeline(true);
-  
-    const rect = progressContainerRef.current.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / rect.width;
-    videoRef.current.currentTime = pos * duration;
-    setCurrentTime(pos * duration);
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause(); // Sürüklerken videoyu duraklat
+    }
   };
+  
+  const handleTimelinePointerUp = () => {
+    setIsDraggingTimeline(false);
+    // Kullanıcı sürüklemeyi bitirdiğinde, eğer video daha önce oynuyorsa ve duraklatıldıysa tekrar başlat.
+    // Ancak, eğer video zaten duraklatılmışsa, kullanıcı manuel olarak başlatmalı.
+    // Bu kısım için ek bir state (wasPlayingBeforeDrag gibi) tutmak gerekebilir.
+    // Şimdilik, basitçe eğer video oynuyorduysa oynatmaya devam etmeyelim, kullanıcı manuel başlatsın.
+  };
+
 
   const handleMarkerClick = (timestamp: number) => {
     if (videoRef.current) {
@@ -498,16 +481,30 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
     if (volumeControlTimeoutRef.current) {
       clearTimeout(volumeControlTimeoutRef.current);
     }
+    setShowControls(true); 
     setShowVolumeSlider(true);
   };
 
   const handleVolumeMouseLeave = () => {
     volumeControlTimeoutRef.current = window.setTimeout(() => {
       setShowVolumeSlider(false);
+       if (isPlaying && controlsTimeoutRef.current === null) { 
+        handleMouseMoveOnVideo(); 
+      }
     }, 200);
   };
   
   const hasCumMarkers = Object.keys(groupedMarkers).length > 0;
+
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
+    if (videoRef.current) {
+        videoRef.current.muted = newVolume === 0;
+        videoRef.current.volume = newVolume; 
+    }
+    setIsMuted(newVolume === 0);
+  };
 
   return (
     <div 
@@ -535,90 +532,96 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
         )}
       >
         <TooltipProvider>
-          {/* Cum Marker Bar */}
-          {duration > 0 && hasCumMarkers && (
-            <div className="relative mb-1.5 h-4 w-full"> 
-              {Object.entries(groupedMarkers).map(([timestamp, markers]) => (
-                <Tooltip 
-                  key={`tooltip-group-${timestamp}`} 
-                  delayDuration={0} 
-                  open={activeMarkerTimestampForTooltip === Number(timestamp) || undefined}
-                >
-                  <TooltipTrigger asChild>
-                    <div
-                      className="absolute -top-px flex h-full cursor-pointer items-center"
-                      style={{
-                        left: `${(Number(timestamp) / duration) * 100}%`,
-                        transform: 'translateX(-50%)',
-                        zIndex: 20 
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkerClick(Number(timestamp));
-                      }}
+          {/* Timeline Container (Marker Bar + Slider) */}
+          <div className="relative mb-2 h-5 w-full"> {/* Yüksekliği markerlar ve slider için ayarla */}
+            
+            {/* Cum Markers Bar (Slider'ın altında kalacak) */}
+            {duration > 0 && hasCumMarkers && (
+              <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[5] h-1 w-full -translate-y-1/2 rounded-full bg-gray-500/30">
+                 {/* İsteğe bağlı: Marker bar için arka plan */}
+              </div>
+            )}
+
+            {/* Shadcn Slider for Timeline (Markerların üzerinde) */}
+            <Slider
+              value={[currentTime]}
+              max={duration}
+              step={0.1}
+              className="absolute inset-x-0 top-1/2 z-10 h-1.5 -translate-y-1/2" // Daha ince slider track'ı
+              onValueChange={handleTimelineChange}
+              onPointerDown={handleTimelinePointerDown}
+              onPointerUp={handleTimelinePointerUp}
+              aria-label="Video timeline"
+            />
+            
+            {/* Cum Markers (Görsel olarak Slider'ın üzerinde gibi, ama tıklama Slider üzerinden) */}
+            {duration > 0 && hasCumMarkers && (
+              <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[15] flex h-full w-full -translate-y-1/2 items-center">
+                {Object.entries(groupedMarkers).map(([timestamp, markers]) => (
+                  <Tooltip 
+                    key={`tooltip-group-${timestamp}`} 
+                    delayDuration={0} 
+                    open={activeMarkerTimestampForTooltip === Number(timestamp) || undefined}
+                  >
+                    <TooltipTrigger asChild>
+                       {/* Marker'ı tıklanabilir yapmak için bir div, ama Slider'ın altında kalmalı */}
+                       <div
+                        className="pointer-events-auto absolute -top-1.5 flex h-5 cursor-pointer items-center justify-center" // Tıklama alanını artır
+                        style={{
+                          left: `${(Number(timestamp) / duration) * 100}%`,
+                          transform: 'translateX(-50%)',
+                        }}
+                        onClick={(e) => { // Slider'ın tıklanmasını engelleme, marker'a tıklandığında video zamanını ayarla
+                          e.stopPropagation(); 
+                          handleMarkerClick(Number(timestamp));
+                        }}
+                      >
+                        <div className="flex -space-x-2"> 
+                          {markers.slice(0, 3).map((marker, markerIndex) => (
+                            <img
+                              key={marker.id}
+                              src={marker.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${marker.userId}`}
+                              alt={marker.username}
+                              className="h-4 w-4 rounded-full ring-1 ring-black/60 md:h-5 md:w-5" 
+                              style={{ zIndex: markers.length - markerIndex }}
+                            />
+                          ))}
+                          {markers.length > 3 && (
+                            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-gray-600 text-[0.6rem] font-semibold text-white ring-1 ring-black/60 md:h-5 md:w-5">
+                              +{markers.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      align="center"
+                      className="max-w-xs rounded-md bg-black/80 px-2 py-1 text-xs text-white shadow-lg z-50"
                     >
-                      <div className="flex -space-x-2"> 
-                        {markers.slice(0, 3).map((marker, markerIndex) => (
-                          <img
-                            key={marker.id}
-                            src={marker.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${marker.userId}`}
-                            alt={marker.username}
-                            className="h-4 w-4 rounded-full ring-1 ring-black/60 md:h-5 md:w-5" 
-                            style={{ zIndex: markers.length - markerIndex }}
-                          />
+                      <div className="flex flex-col items-center text-center">
+                        {markers.slice(0, 3).map(marker => (
+                          <div key={marker.id} className="flex items-center py-0.5">
+                            <img src={marker.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${marker.userId}`} alt={marker.username} className="mr-1.5 h-3 w-3 rounded-full"/>
+                            <span className="text-[0.7rem]">{marker.username}</span>
+                          </div>
                         ))}
                         {markers.length > 3 && (
-                          <div className="flex h-4 w-4 items-center justify-center rounded-full bg-gray-600 text-[0.6rem] font-semibold text-white ring-1 ring-black/60 md:h-5 md:w-5">
-                            +{markers.length - 3}
-                          </div>
+                          <span className="mt-0.5 text-[0.6rem] text-gray-300"> (+{markers.length - 3} others)</span>
                         )}
+                        <span className="mt-0.5 text-[0.6rem] text-gray-400">
+                          came at {formatDuration(Number(timestamp))}
+                        </span>
                       </div>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    align="center"
-                    className="max-w-xs rounded-md bg-black/80 px-2 py-1 text-xs text-white shadow-lg"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      {markers.slice(0, 3).map(marker => (
-                        <div key={marker.id} className="flex items-center py-0.5">
-                          <img src={marker.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${marker.userId}`} alt={marker.username} className="mr-1.5 h-3 w-3 rounded-full"/>
-                          <span className="text-[0.7rem]">{marker.username}</span>
-                        </div>
-                      ))}
-                      {markers.length > 3 && (
-                        <span className="mt-0.5 text-[0.6rem] text-gray-300"> (+{markers.length - 3} others)</span>
-                      )}
-                      <span className="mt-0.5 text-[0.6rem] text-gray-400">
-                        came at {formatDuration(Number(timestamp))}
-                      </span>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          )}
-          
-          {/* Main Progress Bar (Draggable) */}
-          <div
-            ref={progressContainerRef}
-            className="relative mb-2 h-1 w-full cursor-pointer rounded-full bg-gray-500/60"
-            onMouseDown={handleTimelineMouseDown}
-          >
-            <div
-              className="pointer-events-none h-full rounded-full bg-red-500"
-              style={{ width: `${(currentTime / duration) * 100}%` }}
-            />
-            <div 
-              className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-400 shadow opacity-100"
-              style={{ left: `${(currentTime / duration) * 100}%` }}
-            />
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            )}
           </div>
           
           {/* CONTROLS ROW */}
-          <div className="flex items-center justify-between">
-            {/* Left Group: Playback, Volume, Time */}
+          <div className="mt-1 flex items-center justify-between">
             <div className="flex items-center gap-1 md:gap-1.5">
                 <Tooltip delayDuration={150}>
                     <TooltipTrigger asChild>
@@ -656,7 +659,18 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
                         onClick={() => {
                             const newMuted = !isMuted;
                             setIsMuted(newMuted);
-                            if(videoRef.current) videoRef.current.muted = newMuted;
+                            if(videoRef.current) {
+                                videoRef.current.muted = newMuted;
+                                if (newMuted) {
+                                    videoRef.current.volume = 0; 
+                                } else if (volume === 0) { 
+                                    const defaultVolume = 0.5;
+                                    setVolume(defaultVolume);
+                                    videoRef.current.volume = defaultVolume;
+                                } else {
+                                   if(videoRef.current) videoRef.current.volume = volume; 
+                                }
+                            }
                         }}
                         className="rounded-full p-1.5 text-white"
                         aria-label={isMuted ? "Unmute (M)" : "Mute (M)"}
@@ -668,40 +682,30 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
                     </Tooltip>
                     <div 
                         className={cn(
-                            "absolute left-full ml-1 origin-left transform transition-all duration-200 ease-in-out overflow-hidden flex items-center", // Added flex items-center
-                            showVolumeSlider ? "w-10 md:w-14 opacity-100" : "w-0 opacity-0"
+                            "absolute left-full ml-2 origin-left transform transition-all duration-200 ease-in-out flex items-center py-1",
+                            showVolumeSlider ? "w-16 md:w-20 opacity-100" : "w-0 opacity-0 pointer-events-none"
                         )}
                         style={{ transformOrigin: 'left' }}
                     >
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            value={isMuted ? 0 : volume}
-                            onChange={(e) => {
-                            const value = parseFloat(e.target.value);
-                            setVolume(value);
-                            if (videoRef.current) videoRef.current.muted = value === 0;
-                            setIsMuted(value === 0);
-                            }}
-                            className={cn(
-                                "h-1 w-full cursor-pointer appearance-none rounded-full bg-gray-500/70 accent-red-500",
-                            )}
-                            aria-label="Volume"
+                        <Slider
+                          value={[isMuted ? 0 : volume]}
+                          max={1}
+                          step={0.05}
+                          className="w-full h-3" 
+                          onValueChange={handleVolumeChange}
+                          aria-label="Volume"
                         />
                     </div>
                 </div>
               
                 <div className={cn(
                     "ml-1.5 md:ml-2 text-xs font-medium text-white tabular-nums transition-all duration-200 ease-in-out",
-                    showVolumeSlider ? "pl-10 md:pl-14" : "pl-0" 
+                    showVolumeSlider ? "pl-16 md:pl-20" : "pl-0" 
                 )}>
                     {formatDuration(Math.floor(currentTime))} / {formatDuration(Math.floor(duration))}
                 </div>
             </div>
 
-            {/* Right Group: Boşal (as Icon), Fullscreen */}
             <div className="flex items-center gap-1.5 md:gap-2 ml-auto">
               <Tooltip delayDuration={150}>
                   <TooltipTrigger asChild>
@@ -711,7 +715,7 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
                       onMouseLeave={() => { cumStartTimeRef.current = null; }}
                       onTouchStart={startCumTimer}
                       onTouchEnd={handleCum}
-                      className="rounded-full p-1.5 text-white text-xl leading-none" // Adjusted for emoji icon
+                      className="rounded-full p-1.5 text-white text-xl leading-none"
                       aria-label="Mark 'Cum' Point"
                     >
                       💦
@@ -736,7 +740,6 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
         </TooltipProvider>
       </div>
 
-      {/* // Değişiklik burada: activeCumEvent'i kontrol et ve username'i oradan al */}
       {showCumAnimation && activeCumEvent && (
         <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center overflow-hidden">
           {emojis.map((emoji) => (
@@ -753,7 +756,7 @@ const VideoPlayer = ({ videoId, url }: VideoPlayerProps) => {
             </div>
           ))}
           <div className="rounded-lg bg-white/90 px-6 py-3 text-xl font-bold text-gray-900 shadow-2xl md:px-8 md:py-4 md:text-2xl">
-            {activeCumEvent.username || 'Birisi'} boşaldı 💦 {/* activeCumEvent.username kullanılıyor */}
+            {activeCumEvent.username || 'Birisi'} boşaldı 💦
           </div>
         </div>
       )}

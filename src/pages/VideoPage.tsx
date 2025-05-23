@@ -45,7 +45,12 @@ const VideoPage = () => {
       }
     };
     
-    fetchUploader();
+    if (currentVideo) { // currentVideo yüklendiğinde başlığı güncelle
+        document.title = `${currentVideo.title} - videochat`;
+        fetchUploader();
+    } else {
+        document.title = 'video bulunamadı - videochat';
+    }
   }, [currentVideo]);
 
   if (loading) {
@@ -59,9 +64,9 @@ const VideoPage = () => {
   if (!currentVideo) {
     return (
       <div className="mt-10 text-center">
-        <h2 className="text-xl">Video not found</h2>
+        <h2 className="text-xl">video bulunamadı</h2>
         <Link to="/" className="mt-4 inline-block text-blue-400 hover:underline">
-          Back to home
+          anasayfaya dön
         </Link>
       </div>
     );
@@ -71,7 +76,7 @@ const VideoPage = () => {
     <div className="container mx-auto max-w-5xl">
       <Link to="/" className="mb-4 inline-flex items-center text-blue-400 hover:underline">
         <ArrowLeft className="mr-1 h-4 w-4" />
-        Back to videos
+        videolara dön
       </Link>
       
       <VideoPlayer
@@ -105,12 +110,12 @@ const VideoPage = () => {
                       )}
                       {uploader.is_admin && (
                         <span className="ml-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-                          Admin
+                          admin
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-400">
-                      {uploader.is_admin ? 'Admin' : 'User'}
+                      {uploader.is_admin ? 'admin' : 'kullanıcı'}
                     </p>
                   </div>
                 </Link>
@@ -125,7 +130,7 @@ const VideoPage = () => {
                 onClick={() => setShowChat(true)}
               >
                 <MessageCircle className="h-4 w-4" />
-                Message
+                mesaj gönder
               </button>
             )}
             
@@ -134,14 +139,14 @@ const VideoPage = () => {
               onClick={() => voteForVideo(currentVideo.id)}
             >
               <ThumbsUp className="h-4 w-4" />
-              Vote
+              oy ver
             </button>
           </div>
         </div>
         
         {currentVideo.description && (
           <div className="mt-6 rounded-lg bg-gray-800/50 p-4 backdrop-blur-sm">
-            <h2 className="mb-2 font-semibold">Description</h2>
+            <h2 className="mb-2 font-semibold">açıklama</h2>
             <p className="text-gray-300">{currentVideo.description}</p>
           </div>
         )}

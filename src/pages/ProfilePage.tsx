@@ -5,6 +5,7 @@ import { CheckCircle, Users, MessageCircle, Settings, Trash2 } from 'lucide-reac
 import { useAuthStore } from '../stores/authStore';
 import PrivateChat from '../components/chat/PrivateChat';
 import { formatDistanceToNow } from 'date-fns';
+import { tr } from 'date-fns/locale'; // türkçe yerelleştirme için
 
 interface UserProfile {
   id: string;
@@ -63,10 +64,9 @@ const ProfilePage = () => {
       .single();
 
     if (error) {
-      console.error('Error fetching profile:', error);
+      console.error('profil alınırken hata:', error);
       setProfile(null);
     } else if (data) {
-      // Calculate total cum duration from cum_markers
       const { data: cumMarkers } = await supabase
         .from('cum_markers')
         .select('timestamp')
@@ -79,7 +79,6 @@ const ProfilePage = () => {
         total_cum_duration: totalDuration
       });
 
-      // Only check follow status if viewing another user's profile
       if (user && user.id !== data.id) {
         checkFollowStatus(data.id);
       }
@@ -97,7 +96,7 @@ const ProfilePage = () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching comments:', error);
+      console.error('yorumlar alınırken hata:', error);
       return;
     }
 
@@ -113,7 +112,7 @@ const ProfilePage = () => {
       .eq('id', commentId);
 
     if (error) {
-      console.error('Error deleting comment:', error);
+      console.error('yorum silinirken hata:', error);
       return;
     }
 
@@ -128,7 +127,7 @@ const ProfilePage = () => {
       .eq('following_id', userId);
 
     if (followError) {
-      console.error('Error fetching followers:', followError);
+      console.error('takipçiler alınırken hata:', followError);
       setLoadingUsers(false);
       return;
     }
@@ -141,7 +140,7 @@ const ProfilePage = () => {
         .in('id', followerIds);
 
       if (userError) {
-        console.error('Error fetching follower users:', userError);
+        console.error('takipçi kullanıcıları alınırken hata:', userError);
       } else if (userData) {
         setFollowers(userData);
       }
@@ -159,7 +158,7 @@ const ProfilePage = () => {
       .eq('follower_id', userId);
 
     if (followError) {
-      console.error('Error fetching following:', followError);
+      console.error('takip edilenler alınırken hata:', followError);
       setLoadingUsers(false);
       return;
     }
@@ -172,7 +171,7 @@ const ProfilePage = () => {
         .in('id', followingIds);
 
       if (userError) {
-        console.error('Error fetching following users:', userError);
+        console.error('takip edilen kullanıcılar alınırken hata:', userError);
       } else if (userData) {
         setFollowing(userData);
       }
@@ -230,7 +229,7 @@ const ProfilePage = () => {
       });
 
     if (error) {
-      console.error('Error adding comment:', error);
+      console.error('yorum eklenirken hata:', error);
       return;
     }
 
@@ -265,8 +264,8 @@ const ProfilePage = () => {
   if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <h2 className="text-2xl font-bold">User not found</h2>
-        <p className="mt-2 text-gray-400">The user @{username} doesn't exist</p>
+        <h2 className="text-2xl font-bold">kullanıcı bulunamadı</h2>
+        <p className="mt-2 text-gray-400">@{username} adlı kullanıcı mevcut değil</p>
       </div>
     );
   }
@@ -288,13 +287,13 @@ const ProfilePage = () => {
                   <div className="group relative">
                     <CheckCircle className="h-6 w-6 text-blue-500" />
                     <div className="absolute -left-1/2 -top-8 hidden whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-sm group-hover:block">
-                      Verified User
+                      doğrulanmış kullanıcı
                     </div>
                   </div>
                 )}
                 {profile.is_admin && (
                   <span className="rounded-full bg-red-500 px-3 py-1 text-sm font-medium text-white">
-                    Admin
+                    admin
                   </span>
                 )}
               </div>
@@ -304,23 +303,23 @@ const ProfilePage = () => {
                   className="flex items-center gap-1 hover:text-white"
                 >
                   <Users className="h-4 w-4" />
-                  <span className="font-medium text-white">{profile.followers_count}</span> followers
+                  <span className="font-medium text-white">{profile.followers_count}</span> takipçi
                 </button>
                 <span>·</span>
                 <button
                   onClick={() => openModal('following')}
                   className="hover:text-white"
                 >
-                  <span className="font-medium text-white">{profile.following_count}</span> following
+                  <span className="font-medium text-white">{profile.following_count}</span> takip edilen
                 </button>
                 <span>·</span>
                 <span className={`text-sm ${profile.is_online ? 'text-green-400' : 'text-gray-400'}`}>
-                  {profile.is_online ? 'Online' : `Last seen ${formatDistanceToNow(new Date(profile.last_seen), { addSuffix: true })}`}
+                  {profile.is_online ? 'çevrimiçi' : `son görülme ${formatDistanceToNow(new Date(profile.last_seen), { addSuffix: true, locale: tr })}`}
                 </span>
               </div>
               <div className="mt-4">
                 <p className="text-gray-300">
-                  {profile.about || 'No bio yet'}
+                  {profile.about || 'henüz biyografi yok'}
                 </p>
               </div>
             </div>
@@ -331,6 +330,7 @@ const ProfilePage = () => {
               <Link
                 to="/settings"
                 className="rounded-full bg-gray-700 p-2 text-white hover:bg-gray-600"
+                aria-label="ayarlar"
               >
                 <Settings className="h-5 w-5" />
               </Link>
@@ -339,6 +339,7 @@ const ProfilePage = () => {
                 <button
                   onClick={() => setShowChat(true)}
                   className="rounded-full bg-gray-700 p-2 text-white hover:bg-gray-600"
+                  aria-label="mesaj gönder"
                 >
                   <MessageCircle className="h-5 w-5" />
                 </button>
@@ -350,7 +351,7 @@ const ProfilePage = () => {
                       : 'bg-blue-600 text-white hover:bg-blue-500'
                   }`}
                 >
-                  {isFollowing ? 'Unfollow' : 'Follow'}
+                  {isFollowing ? 'takipten çık' : 'takip et'}
                 </button>
               </>
             )}
@@ -359,22 +360,22 @@ const ProfilePage = () => {
 
         <div className="mt-8 grid grid-cols-2 gap-6">
           <div className="rounded-xl bg-gray-700/50 p-6 text-center">
-            <h3 className="text-lg font-medium text-gray-300">Total Cums</h3>
+            <h3 className="text-lg font-medium text-gray-300">toplam boşalma</h3>
             <p className="mt-2 text-3xl font-bold">{profile.cum_count}</p>
           </div>
           <div className="rounded-xl bg-gray-700/50 p-6 text-center">
-            <h3 className="text-lg font-medium text-gray-300">Total Duration</h3>
+            <h3 className="text-lg font-medium text-gray-300">toplam süre</h3>
             <p className="mt-2 text-3xl font-bold">{profile.total_cum_duration}s</p>
           </div>
         </div>
 
         <div className="mt-8">
-          <h3 className="mb-4 text-xl font-semibold">Comments</h3>
+          <h3 className="mb-4 text-xl font-semibold">yorumlar</h3>
           <form onSubmit={handleComment} className="mb-6">
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
+              placeholder="bir yorum yaz..."
               className="w-full rounded-lg bg-gray-700 p-3 text-white placeholder-gray-400"
               rows={2}
             />
@@ -383,7 +384,7 @@ const ProfilePage = () => {
               disabled={!newComment.trim()}
               className="mt-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 disabled:opacity-50"
             >
-              Post Comment
+              yorum yap
             </button>
           </form>
           <div className="space-y-4">
@@ -392,7 +393,7 @@ const ProfilePage = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <img
-                      src={comment.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${comment.id}`}
+                      src={comment.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${comment.id}`} // Yorum ID'si yerine kullanıcı ID'si daha mantıklı olabilir.
                       alt={comment.username}
                       className="h-8 w-8 rounded-full"
                     />
@@ -403,13 +404,14 @@ const ProfilePage = () => {
                       @{comment.username}
                     </Link>
                     <span className="text-sm text-gray-400">
-                      {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: tr })}
                     </span>
                   </div>
                   {(user?.id === comment.user_id || user?.id === profile?.id) && (
                     <button
                       onClick={() => handleDeleteComment(comment.id)}
                       className="rounded-full p-1 text-gray-400 hover:bg-gray-600 hover:text-white"
+                      aria-label="sil"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -422,24 +424,24 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* Followers/Following Modal */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-gray-800 p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">
-                {modalType === 'followers' ? 'Followers' : 'Following'}
+                {modalType === 'followers' ? 'takipçiler' : 'takip edilenler'}
               </h2>
               <button
                 onClick={() => setModalType(null)}
                 className="rounded-full p-2 hover:bg-gray-700"
+                aria-label="kapat"
               >
                 ×
               </button>
             </div>
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="kullanıcı ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="mb-4 w-full rounded-lg bg-gray-700 p-2 text-white placeholder-gray-400"
@@ -451,7 +453,7 @@ const ProfilePage = () => {
                 </div>
               ) : filteredUsers.length === 0 ? (
                 <div className="flex items-center justify-center py-8 text-gray-400">
-                  {searchTerm ? 'No users found matching your search' : 'No users found'}
+                  {searchTerm ? 'aramanızla eşleşen kullanıcı bulunamadı' : 'kullanıcı bulunamadı'}
                 </div>
               ) : (
                 filteredUsers.map((user) => (
@@ -472,12 +474,12 @@ const ProfilePage = () => {
                         {user.verified && <CheckCircle className="h-4 w-4 text-blue-500" />}
                         {user.is_admin && (
                           <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-                            Admin
+                            admin
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-gray-400">
-                        {user.is_online ? 'Online' : `Last seen ${formatDistanceToNow(new Date(user.last_seen), { addSuffix: true })}`}
+                        {user.is_online ? 'çevrimiçi' : `son görülme ${formatDistanceToNow(new Date(user.last_seen), { addSuffix: true, locale: tr })}`}
                       </p>
                     </div>
                   </Link>

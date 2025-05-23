@@ -3,6 +3,7 @@ import GlobalChat from '../components/chat/GlobalChat';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { tr } from 'date-fns/locale'; // türkçe yerelleştirme için
 
 interface User {
   id: string;
@@ -19,7 +20,7 @@ const ChatPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = 'Chat - VideoChat';
+    document.title = 'sohbet - videochat';
     fetchUsers();
     
     const channel = supabase
@@ -62,7 +63,7 @@ const ChatPage = () => {
       </div>
       
       <div className="w-80 flex-shrink-0 overflow-y-auto border-l border-gray-800 bg-gray-800/50 p-4">
-        <h2 className="mb-4 font-semibold">Online Users ({onlineUsers.length})</h2>
+        <h2 className="mb-4 font-semibold">çevrimiçi kullanıcılar ({onlineUsers.length})</h2>
         {loading ? (
           <div className="flex justify-center py-4">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
@@ -93,7 +94,7 @@ const ChatPage = () => {
                     )}
                     {user.is_admin && (
                       <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-                        Admin
+                        admin
                       </span>
                     )}
                   </div>
@@ -105,7 +106,7 @@ const ChatPage = () => {
 
         {offlineUsers.length > 0 && (
           <>
-            <h2 className="mb-4 mt-6 font-semibold">Offline Users ({offlineUsers.length})</h2>
+            <h2 className="mb-4 mt-6 font-semibold">çevrimdışı kullanıcılar ({offlineUsers.length})</h2>
             <div className="space-y-2">
               {offlineUsers.map(user => (
                 <Link
@@ -130,12 +131,12 @@ const ChatPage = () => {
                       )}
                       {user.is_admin && (
                         <span className="rounded-full bg-red-500/50 px-2 py-0.5 text-xs font-medium text-white">
-                          Admin
+                          admin
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500">
-                      Last seen {formatDistanceToNow(new Date(user.last_seen), { addSuffix: true })}
+                      son görülme {formatDistanceToNow(new Date(user.last_seen), { addSuffix: true, locale: tr })}
                     </p>
                   </div>
                 </Link>

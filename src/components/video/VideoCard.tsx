@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { tr } from 'date-fns/locale'; // türkçe yerelleştirme için
 
 type Video = Database['public']['Tables']['videos']['Row'];
 interface UserCumStats {
@@ -33,14 +34,10 @@ interface VideoCardProps {
 const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) => {
   const navigate = useNavigate();
   const { deleteVideo, favoriteVideos } = useVideoStore();
-  // isAdmin from useAuthStore is for the CURRENT viewing user, not necessarily the one who favorited.
-  // We don't need it for the "is an admin favorite" display logic anymore for all users.
   const { user } = useAuthStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cumStats, setCumStats] = useState<{ count: number; users: UserCumStats[] } | null>(null);
 
-  // This will now be true if ANY admin has favorited the video,
-  // because favoriteVideos from the store (after RLS change) will contain all admin-favorited video IDs.
   const isFavoritedByAnAdmin = Array.isArray(favoriteVideos) && video?.id ? favoriteVideos.includes(video.id) : false;
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -62,7 +59,7 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
         .eq('video_id', video.id);
 
       if (markersError) {
-        console.error("Error fetching cum markers:", markersError);
+        console.error("boşalma işaretçileri alınırken hata:", markersError);
         setCumStats({ count: 0, users: [] });
         return;
       }
@@ -80,10 +77,10 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
           .in('id', userIds);
 
         if (usersError) {
-          console.error("Error fetching user data for cum stats:", usersError);
+          console.error("boşalma istatistikleri için kullanıcı verileri alınırken hata:", usersError);
           const fallbackUsers: UserCumStats[] = userIds.map(userId => ({
             userId,
-            username: 'Unknown User',
+            username: 'bilinmeyen kullanıcı',
             avatarUrl: null,
             count: userCounts[userId]
           })).sort((a,b) => b.count - a.count);
@@ -96,7 +93,7 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
 
         const usersWithStats: UserCumStats[] = usersData.map(u => ({
           userId: u.id,
-          username: u.username || 'Unknown User',
+          username: u.username || 'bilinmeyen kullanıcı',
           avatarUrl: u.avatar_url,
           count: userCounts[u.id]
         })).sort((a,b) => b.count - a.count);
@@ -122,13 +119,13 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
     "shadow-custom-inset drop-shadow-md",
     "transition-shadow hover:shadow-sm",
     {
-      "border-primary": isFavoritedByAnAdmin, // Use the new variable here
+      "border-primary": isFavoritedByAnAdmin,
       "border-border": !isFavoritedByAnAdmin
     }
   );
 
   if (!video) {
-    return <div className="group relative h-full overflow-hidden rounded-xl border bg-card p-4">Loading video data...</div>;
+    return <div className="group relative h-full overflow-hidden rounded-xl border bg-card p-4">video verisi yükleniyor...</div>;
   }
 
   const tooltipContentClasses = cn(
@@ -150,11 +147,10 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gray-700/30">
-              <span className="text-2xl font-semibold text-gray-400">No Thumbnail</span>
+              <span className="text-2xl font-semibold text-gray-400">küçük resim yok</span>
             </div>
           )}
 
-          {/* Display star and border effect if the video is favorited by an admin */}
           {isFavoritedByAnAdmin && (
             <>
               <div className="absolute inset-0 overflow-hidden rounded-xl z-[1]">
@@ -166,15 +162,14 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      aria-label="Favorited by Admin" // General label for all users
+                      aria-label="admin tarafından favorilendi"
                       className="p-1 rounded-full focus:outline-none hover:bg-black/20 transition-colors"
                     >
                       <Star className="h-5 w-5 fill-primary text-primary" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent sideOffset={4} className={tooltipContentClasses}>
-                    {/* General tooltip text for all users */}
-                    <p>Favorited by Admin</p>
+                    <p>admin tarafından favorilendi</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -183,9 +178,9 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
 
           <div className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm md:left-6 md:top-6 md:px-4 md:py-2 md:text-sm z-20">
             {isLatest ? (
-              <span className="text-green-400">Today's Video</span>
+              <span className="text-green-400">bugünün videosu</span>
             ) : (
-              <span>{video.created_at ? formatDistanceToNow(new Date(video.created_at), { addSuffix: true }) : 'Date unknown'}</span>
+              <span>{video.created_at ? formatDistanceToNow(new Date(video.created_at), { addSuffix: true, locale: tr }) : 'tarih bilinmiyor'}</span>
             )}
           </div>
 
@@ -208,7 +203,7 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
                   <div className="flex items-center gap-2 md:gap-4">
                     <div className="flex items-center gap-1 text-xs text-gray-300 md:gap-1.5 md:text-sm">
                       <Clock className="h-3.5 w-3.5 text-blue-400 md:h-4 md:w-4" />
-                      <span>{watchTime}s watched</span>
+                      <span>{watchTime}s izlendi</span>
                     </div>
                   </div>
 
@@ -217,7 +212,7 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
                       <TooltipTrigger asChild>
                         <div className="flex items-center gap-1 text-xs text-gray-300 md:gap-1.5 md:text-sm cursor-default">
                           <Users className="h-3.5 w-3.5 text-pink-400 md:h-4 md:w-4" />
-                          <span>{cumStats.count} cums by {cumStats.users.length} users</span>
+                          <span>{cumStats.users.length} kullanıcıdan {cumStats.count} boşalma</span>
                         </div>
                       </TooltipTrigger>
                       {cumStats.users && cumStats.users.length > 0 && (
@@ -252,14 +247,14 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
                     className="flex items-center gap-1.5 rounded-full bg-gray-700/50 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-gray-600 md:px-4 md:text-sm"
                   >
                     <Edit2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    Edit
+                    düzenle
                   </button>
                   <button
                     onClick={handleDelete}
                     className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition-all hover:bg-red-500 hover:text-white md:px-4 md:text-sm"
                   >
                     <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    Delete
+                    sil
                   </button>
                 </div>
               )}
@@ -270,9 +265,9 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
         {showDeleteConfirm && onEdit && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-sm rounded-lg bg-gray-800 p-6 text-center shadow-xl">
-              <h3 className="mb-4 text-lg font-medium text-white">Delete Video</h3>
+              <h3 className="mb-4 text-lg font-medium text-white">videoyu sil</h3>
               <p className="mb-6 text-gray-300">
-                Are you sure you want to delete "{video.title}"? This action cannot be undone.
+                "{video.title}" adlı videoyu silmek istediğinizden emin misiniz? bu işlem geri alınamaz.
               </p>
               <div className="flex justify-center gap-3">
                 <button
@@ -283,7 +278,7 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
                   }}
                   className="rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700"
                 >
-                  Delete
+                  sil
                 </button>
                 <button
                   onClick={(e) => {
@@ -292,7 +287,7 @@ const VideoCard = ({ video, watchTime = 0, onEdit, isLatest }: VideoCardProps) =
                   }}
                   className="rounded-lg bg-gray-700 px-4 py-2 font-medium text-white hover:bg-gray-600"
                 >
-                  Cancel
+                  iptal
                 </button>
               </div>
             </div>

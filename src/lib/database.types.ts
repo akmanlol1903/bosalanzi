@@ -152,6 +152,7 @@ export interface Database {
           reply_to?: string | null; // chatStore.ts'den anlaşıldığı üzere
           reply_to_content?: string | null; // chatStore.ts'den anlaşıldığı üzere
           reply_to_username?: string | null; // chatStore.ts'den anlaşıldığı üzere
+          is_event_message?: boolean; // YENİ EKLENDİ (veya var olanı teyit edildi)
         };
         Insert: {
           id?: string;
@@ -164,6 +165,7 @@ export interface Database {
           reply_to?: string | null;
           reply_to_content?: string | null;
           reply_to_username?: string | null;
+          is_event_message?: boolean; // YENİ EKLENDİ
         };
         Update: {
           id?: string;
@@ -176,6 +178,7 @@ export interface Database {
           reply_to?: string | null;
           reply_to_content?: string | null;
           reply_to_username?: string | null;
+          is_event_message?: boolean; // YENİ EKLENDİ
         };
       };
       watch_time: { // Var olan watch_time tablonuz

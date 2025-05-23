@@ -11,6 +11,7 @@ const SettingsPage = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
+    document.title = 'ayarlar - videochat'; // Sayfa başlığı eklendi
     if (user) {
       setUsername(user.user_metadata.username || '');
       setAvatarUrl(user.user_metadata.avatar_url || '');
@@ -40,7 +41,6 @@ const SettingsPage = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      // Update user metadata
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
           username,
@@ -50,7 +50,6 @@ const SettingsPage = () => {
 
       if (updateError) throw updateError;
 
-      // Update users table
       const { error: dbError } = await supabase
         .from('users')
         .update({
@@ -62,10 +61,10 @@ const SettingsPage = () => {
 
       if (dbError) throw dbError;
 
-      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setMessage({ type: 'success', text: 'profil başarıyla güncellendi!' });
     } catch (error) {
-      console.error('Error updating profile:', error);
-      setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
+      console.error('profil güncellenirken hata:', error);
+      setMessage({ type: 'error', text: 'profil güncellenemedi. lütfen tekrar deneyin.' });
     } finally {
       setLoading(false);
     }
@@ -74,7 +73,7 @@ const SettingsPage = () => {
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
       <div className="rounded-2xl bg-gray-800/50 p-8 backdrop-blur-sm">
-        <h1 className="text-2xl font-bold">Profile Settings</h1>
+        <h1 className="text-2xl font-bold">profil ayarları</h1>
         
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           {message.text && (
@@ -87,7 +86,7 @@ const SettingsPage = () => {
           
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-300">
-              Username
+              kullanıcı adı
             </label>
             <input
               type="text"
@@ -101,7 +100,7 @@ const SettingsPage = () => {
 
           <div>
             <label htmlFor="avatarUrl" className="block text-sm font-medium text-gray-300">
-              Avatar URL
+              avatar urlsi
             </label>
             <input
               type="url"
@@ -114,7 +113,7 @@ const SettingsPage = () => {
 
           <div>
             <label htmlFor="about" className="block text-sm font-medium text-gray-300">
-              About Me
+              hakkımda
             </label>
             <textarea
               id="about"
@@ -122,7 +121,7 @@ const SettingsPage = () => {
               onChange={(e) => setAbout(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-700 px-4 py-2 text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               rows={4}
-              placeholder="Write something about yourself..."
+              placeholder="kendin hakkında bir şeyler yaz..."
             />
           </div>
 
@@ -132,7 +131,7 @@ const SettingsPage = () => {
               disabled={loading}
               className="rounded-lg bg-blue-600 px-6 py-2 font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? 'kaydediliyor...' : 'değişiklikleri kaydet'}
             </button>
           </div>
         </form>
